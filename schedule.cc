@@ -57,9 +57,9 @@ void Scheduler::set_enabled(Thread *t, enabled_type_t enabled_status) {
 	int threadid = id_to_int(t->get_id());
 	if (threadid >= enabled_len) {
 		enabled_type_t *new_enabled = (enabled_type_t *)snapshot_malloc(sizeof(enabled_type_t) * (threadid + 1));
-		memset(&new_enabled[enabled_len], 0, (threadid + 1 - enabled_len) * sizeof(enabled_type_t));
+		real_memset(&new_enabled[enabled_len], 0, (threadid + 1 - enabled_len) * sizeof(enabled_type_t));
 		if (enabled != NULL) {
-			memcpy(new_enabled, enabled, enabled_len * sizeof(enabled_type_t));
+			real_memcpy(new_enabled, enabled, enabled_len * sizeof(enabled_type_t));
 			snapshot_free(enabled);
 		}
 		enabled = new_enabled;
@@ -98,7 +98,6 @@ bool Scheduler::is_enabled(thread_id_t tid) const
 /**
  * @brief Check if a Thread is currently in the sleep set
  * @param t The Thread to check
- * @return True if the Thread is currently enabled
  */
 bool Scheduler::is_sleep_set(const Thread *t) const
 {
@@ -139,6 +138,8 @@ enabled_type_t Scheduler::get_enabled(const Thread *t) const
 /**
  * Add a Thread to the sleep set.
  * @param t The Thread to add
+ * A Thread is in THREAD_SLEEP_SET if it is sleeping or blocked by a wait
+ * operation that should fail spuriously (decide by fuzzer).
  */
 void Scheduler::add_sleep(Thread *t)
 {

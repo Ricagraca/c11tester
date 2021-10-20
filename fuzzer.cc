@@ -39,7 +39,47 @@ bool Fuzzer::shouldWake(const ModelAction *sleep) {
 	return ((sleep->get_time()+sleep->get_value()) < lcurrtime);
 }
 
-bool Fuzzer::shouldWait(const ModelAction * act)
+/* Decide whether wait should spuriously fail or not */
+bool Fuzzer::waitShouldFail(ModelAction * wait)
 {
+	if ((random() & 1) == 0) {
+		struct timespec currtime;
+        clock_gettime(CLOCK_MONOTONIC, &currtime);
+        uint64_t lcurrtime = currtime.tv_sec * 1000000000 + currtime.tv_nsec;
+
+		// The time after which wait fail spuriously, in nanoseconds
+		uint64_t time = random() % 1000000;
+		wait->set_time(time + lcurrtime);
+		return true;
+	}
+
+	return false;
+}
+
+bool Fuzzer::waitShouldWakeUp(const ModelAction * wait)
+{
+	struct timespec currtime;
+	clock_gettime(CLOCK_MONOTONIC, &currtime);
+	uint64_t lcurrtime = currtime.tv_sec * 1000000000 + currtime.tv_nsec;
+
+	return (wait->get_time() < lcurrtime);
+}
+
+bool Fuzzer::randomizeWaitTime(ModelAction * timed_wait)
+{
+	uint64_t abstime = timed_wait->get_time();
+	struct timespec currtime;
+	clock_gettime(CLOCK_MONOTONIC, &currtime);
+	uint64_t lcurrtime = currtime.tv_sec * 1000000000 + currtime.tv_nsec;
+	if (abstime <= lcurrtime)
+		return false;
+
+	// Shorten wait time
+	if ((random() & 1) == 0) {
+		uint64_t tmp = abstime - lcurrtime;
+		uint64_t time_to_expire = random() % tmp + lcurrtime;
+		timed_wait->set_time(time_to_expire);
+	}
+
 	return true;
 }

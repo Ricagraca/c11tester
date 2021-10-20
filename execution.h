@@ -19,6 +19,9 @@
 #include <condition_variable>
 #include "classlist.h"
 
+#define INITIAL_THREAD_ID	0
+#define MAIN_THREAD_ID		1
+
 struct PendingFutureValue {
 	PendingFutureValue(ModelAction *writer, ModelAction *reader) :
 		writer(writer), reader(reader)
@@ -99,8 +102,8 @@ public:
 	SNAPSHOTALLOC
 private:
 	int get_execution_number() const;
-	bool should_wake_up(const ModelAction *curr, const Thread *thread) const;
-	void wake_up_sleeping_actions(ModelAction *curr);
+	bool should_wake_up(const ModelAction * asleep) const;
+	void wake_up_sleeping_actions();
 	modelclock_t get_next_seq_num();
 	bool next_execution();
 	bool initialize_curr_action(ModelAction **curr);

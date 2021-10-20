@@ -419,6 +419,8 @@ Thread::Thread(thread_id_t tid) :
 	last_action_val(0),
 	model_thread(true)
 {
+	// real_memset is not defined when
+	// the model thread is constructed
 	memset(&context, 0, sizeof(context));
 }
 

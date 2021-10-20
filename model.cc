@@ -21,6 +21,7 @@
 #include "plugins.h"
 
 ModelChecker *model = NULL;
+int inside_model = 0;
 
 void placeholder(void *) {
 	ASSERT(0);
@@ -58,9 +59,11 @@ void install_handler() {
 
 void createModelIfNotExist() {
 	if (!model) {
+		ENTER_MODEL_FLAG;
 		snapshot_system_init(100000);
 		model = new ModelChecker();
 		model->startChecker();
+		EXIT_MODEL_FLAG;
 	}
 }
 
@@ -72,7 +75,7 @@ ModelChecker::ModelChecker() :
 	history(new ModelHistory()),
 	execution(new ModelExecution(this, scheduler)),
 	execution_number(1),
-	curr_thread_num(1),
+	curr_thread_num(MAIN_THREAD_ID),
 	trace_analyses(),
 	inspect_plugin(NULL)
 {
@@ -80,7 +83,8 @@ ModelChecker::ModelChecker() :
 							"Copyright (c) 2013 and 2019 Regents of the University of California. All rights reserved.\n"
 							"Distributed under the GPLv2\n"
 							"Written by Weiyu Luo, Brian Norris, and Brian Demsky\n\n");
-	memset(&stats,0,sizeof(struct execution_stats));
+	init_memory_ops();
+	real_memset(&stats,0,sizeof(struct execution_stats));
 	init_thread = new Thread(execution->get_next_id(), (thrd_t *) model_malloc(sizeof(thrd_t)), &placeholder, NULL, NULL);
 #ifdef TLS
 	init_thread->setTLS((char *)get_tls_addr());
@@ -349,11 +353,11 @@ void ModelChecker::startRunExecution(Thread *old) {
 			execution->collectActions();
 		}
 
-		curr_thread_num = 1;
+		curr_thread_num = MAIN_THREAD_ID;
 		Thread *thr = getNextThread(old);
 		if (thr != nullptr) {
 			scheduler->set_current_thread(thr);
-
+			EXIT_MODEL_FLAG;
 			if (Thread::swap(old, thr) < 0) {
 				perror("swap threads");
 				exit(EXIT_FAILURE);
@@ -385,7 +389,7 @@ Thread* ModelChecker::getNextThread(Thread *old)
 		}
 
 		ModelAction *act = thr->get_pending();
-		if (act && execution->is_enabled(tid)){
+		if (act && scheduler->is_enabled(tid)){
 			/* Don't schedule threads which should be disabled */
 			if (!execution->check_action_enabled(act)) {
 				scheduler->sleep(thr);
@@ -417,7 +421,7 @@ void ModelChecker::finishRunExecution(Thread *old)
 	scheduler->set_current_thread(NULL);
 
 	/** Reset curr_thread_num to initial value for next execution. */
-	curr_thread_num = 1;
+	curr_thread_num = MAIN_THREAD_ID;
 
 	/** If we have more executions, we won't make it past this call. */
 	finish_execution(execution_number < params.maxexecutions);
@@ -452,6 +456,8 @@ uint64_t ModelChecker::switch_thread(ModelAction *act)
 		delete act;
 		return 0;
 	}
+	ENTER_MODEL_FLAG;
+
 	DBG();
 	Thread *old = thread_current();
 	old->set_state(THREAD_READY);

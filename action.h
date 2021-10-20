@@ -116,7 +116,8 @@ public:
 	uint64_t get_write_value() const;
 	uint64_t get_return_value() const;
 	ModelAction * get_reads_from() const { return reads_from; }
-	uint64_t get_time() const {return time;}
+	uint64_t get_time() const { return time; }
+	void set_time(uint64_t _time) { time = _time; }
 	cdsc::mutex * get_mutex() const;
 
 	void set_read_from(ModelAction *act);
@@ -139,6 +140,7 @@ public:
 	bool is_trylock() const;
 	bool is_unlock() const;
 	bool is_wait() const;
+	bool is_timedwait() const;
 	bool is_create() const;
 	bool is_notify() const;
 	bool is_notify_one() const;
